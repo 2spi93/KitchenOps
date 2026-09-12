@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div><span class="eyebrow">CARTE DU CHEF</span><h1>Plats autorisés</h1><p>KitchenOps ne recommande que les recettes définies ici par le chef.</p></div>
+</section>
+
+<section class="card">
+  <h2>Ajouter une recette</h2>
+  <form method="post" action="/recipes">
+    <div class="form-grid">
+      <input name="name" placeholder="Poulet rôti, légumes" required>
+      <select name="kind" required>
+        <option value="CARTE">Carte</option>
+        <option value="PLAT_DU_JOUR">Plat du jour</option>
+        <option value="PERSONNEL">Repas du personnel</option>
+      </select>
+      <input name="portions_default" type="number" min="1" value="10" placeholder="Portions">
+    </div>
+    <label>Ingrédients par portion</label>
+    <textarea name="ingredients_text" rows="3" placeholder="Poulet:0.18; Courgette:0.12; Riz:0.08"></textarea>
+    <small>Format : nom exact du produit:quantité par portion ; produit suivant...</small>
+    <label>Notes du chef</label>
+    <textarea name="notes" rows="2" placeholder="Allergènes, dressage, consignes..."></textarea>
+    <button class="primary">Enregistrer la recette</button>
+  </form>
+</section>
+
+<div class="grid three">
+{% for kind, title in [("CARTE","Carte"),("PLAT_DU_JOUR","Plats du jour"),("PERSONNEL","Personnel")] %}
+<section class="card">
+  <h2>{{ title }}</h2>
+  {% for r in recipes if r.kind == kind %}
+    <div class="recipe-block">
+      <strong>{{ r.name }}</strong>
+      <small>{{ r.portions_default }} portions de référence</small>
+      <ul>
+      {% for i in ingredients.get(r.id, []) %}
+        <li>{{ i.product_name }} : {{ i.qty_per_portion }} {{ i.unit }}/portion</li>
+      {% else %}
+        <li>Aucun ingrédient relié</li>
+      {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <div class="empty">Aucun plat.</div>
+  {% endfor %}
+</section>
+{% endfor %}
+</div>
+{% endblock %}
