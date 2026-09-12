@@ -1,0 +1,11 @@
+services:
+  kitchenops:
+    build: .
+    container_name: kitchenops
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./data:/app/data
