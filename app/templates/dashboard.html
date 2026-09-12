@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <span class="eyebrow">TABLEAU DE BORD</span>
+    <h1>Ce qu'il faut faire aujourd'hui</h1>
+    <p>Stock, commandes et plats possibles à partir des données validées.</p>
+  </div>
+  <a class="primary button" href="/scan">📷 Prendre une photo</a>
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head"><h2>🛒 À recommander</h2><a href="/inventory">Voir stock</a></div>
+    {% if restock %}
+      {% for x in restock %}
+        <div class="rowline">
+          <div><strong>{{ x.name }}</strong><small>{{ x.current }} {{ x.unit }} → cible {{ x.target }}</small></div>
+          <div class="qty"><span class="badge {{ x.priority|lower }}">{{ x.priority }}</span><strong>+{{ x.need }} {{ x.unit }}</strong></div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Aucun réassort détecté.</div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>📸 Contrôles récents</h2><a href="/scan">Historique</a></div>
+    {% for s in recent_scans %}
+      <a class="rowline linkrow" href="/scan/{{ s.id }}">
+        <div><strong>{{ "Bon / BL" if s.scan_type=="ORDER_DOC" else "Chambre froide" }}</strong><small>{{ s.created_at }}</small></div>
+        <span class="badge">{{ s.status }}</span>
+      </a>
+    {% else %}
+      <div class="empty">Aucune analyse pour le moment.</div>
+    {% endfor %}
+  </section>
+</div>
+
+<div class="grid three">
+  {% for kind, title, icon in [
+      ("PLAT_DU_JOUR","Plat du jour","⭐"),
+      ("PERSONNEL","Repas du personnel","👨‍🍳"),
+      ("CARTE","Carte","📋")
+  ] %}
+  <section class="card">
+    <h2>{{ icon }} {{ title }}</h2>
+    <p class="muted">Uniquement les recettes validées par le chef.</p>
+    {% for r in grouped[kind] %}
+      <div class="recipe-score">
+        <div><strong>{{ r.name }}</strong><small>{{ r.reason }}</small></div>
+        <span class="score">{{ r.score|round|int }}%</span>
+      </div>
+    {% else %}
+      <div class="empty">Aucune recette configurée.</div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
