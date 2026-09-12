@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <span class="eyebrow">VALIDATION</span>
+    <h1>{{ "Document fournisseur" if scan.scan_type=="ORDER_DOC" else "Chambre froide" }}</h1>
+    <p>Le système sépare toujours l'observation IA de la validation du stock.</p>
+  </div>
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <img class="scan-image" src="/media/{{ scan.image_name }}" alt="Photo analysée">
+  </section>
+
+  <section class="card">
+    {% if result.configured is defined and not result.configured %}
+      <div class="alert danger">{{ result.message }}</div>
+    {% endif %}
+
+    {% if scan.scan_type == "ORDER_DOC" %}
+      <h2>{{ result.document_type or "Document" }}</h2>
+      <div class="kv"><span>Fournisseur</span><strong>{{ result.supplier or "—" }}</strong></div>
+      <div class="kv"><span>Référence</span><strong>{{ result.reference or "—" }}</strong></div>
+      <div class="kv"><span>Date</span><strong>{{ result.date or "—" }}</strong></div>
+      <div class="kv"><span>Total</span><strong>{{ result.total if result.total is not none else "—" }}</strong></div>
+      <div class="alert success">Le document et ses lignes ont déjà été enregistrés comme brouillon.</div>
+
+      <h3>Lignes détectées</h3>
+      {% for l in result.lines or [] %}
+        <div class="rowline">
+          <div>
+            <strong>{{ l.raw_name }}</strong>
+            <small>
+              {% if l.catalog_product_id and pmap.get(l.catalog_product_id) %}
+                → {{ pmap[l.catalog_product_id].name }}
+              {% else %}
+                Produit non rapproché
+              {% endif %}
+              · confiance {{ ((l.confidence or 0)*100)|round|int }}%
+            </small>
+          </div>
+          <div class="qty">{{ l.qty }} {{ l.unit }}</div>
+        </div>
+      {% else %}
+        <div class="empty">Aucune ligne extraite.</div>
+      {% endfor %}
+
+      {% if purchase_order and purchase_order.received %}
+        <div class="alert success">Réception déjà appliquée au stock.</div>
+      {% else %}
+        <form method="post" action="/scan/{{ scan.id }}/receive-order">
+          <label class="check">
+            <input type="checkbox" name="confirm" value="yes" required>
+            Je confirme que la marchandise a réellement été reçue. Les lignes rapprochées avec une confiance ≥ {{ (threshold*100)|round|int }}% seront ajoutées au stock.
+          </label>
+          <button class="primary wide">Réceptionner la marchandise</button>
+        </form>
+      {% endif %}
+
+    {% else %}
+      <h2>Produits visibles</h2>
+      {% for o in result.observed or [] %}
+        <div class="rowline">
+          <div>
+            <strong>{{ o.name }}</strong>
+            <small>{{ o.basis }} · confiance {{ ((o.confidence or 0)*100)|round|int }}%</small>
+          </div>
+          <div class="qty">≈ {{ o.estimated_qty }} {{ o.unit }}</div>
+        </div>
+      {% else %}
+        <div class="empty">Aucun produit suffisamment visible.</div>
+      {% endfor %}
+
+      {% if result.warnings %}
+        <div class="alert">
+          {% for w in result.warnings %}<div>⚠ {{ w }}</div>{% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/scan/{{ scan.id }}/apply-cold-room">
+        <label class="check">
+          <input type="checkbox" name="confirm" value="yes" required>
+          Je valide cette photo. Remplacer le stock enregistré uniquement pour les estimations avec une confiance ≥ {{ (threshold*100)|round|int }}%.
+        </label>
+        <button class="primary wide">Appliquer au stock</button>
+      </form>
+    {% endif %}
+  </section>
+</div>
+
+{% if scan.scan_type == "COLD_ROOM" %}
+<section class="section-title">
+  <span class="eyebrow">SIMULATION AVANT VALIDATION</span>
+  <h2>Si cette photo représente bien le stock actuel</h2>
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <h2>🛒 Ce qu'il resterait à commander</h2>
+    {% for x in restock %}
+      <div class="rowline">
+        <div><strong>{{ x.name }}</strong><small>Vu/estimé : {{ x.current }} {{ x.unit }} · cible {{ x.target }}</small></div>
+        <div class="qty"><span class="badge {{ x.priority|lower }}">{{ x.priority }}</span><strong>+{{ x.need }} {{ x.unit }}</strong></div>
+      </div>
+    {% else %}
+      <div class="empty">Aucun réassort détecté à partir de cette photo.</div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>👨‍🍳 Repas du personnel</h2>
+    <p class="muted">Uniquement dans la liste créée par le chef.</p>
+    {% for r in grouped.get("PERSONNEL", []) %}
+      <div class="recipe-score">
+        <div><strong>{{ r.name }}</strong><small>{{ r.reason }}</small></div>
+        <span class="score">{{ r.score|round|int }}%</span>
+      </div>
+    {% else %}
+      <div class="empty">Aucun repas du personnel configuré.</div>
+    {% endfor %}
+  </section>
+</div>
+
+<div class="grid two">
+  <section class="card">
+    <h2>⭐ Plat du jour</h2>
+    <p class="muted">Choix parmi les plats du jour autorisés par le chef.</p>
+    {% for r in grouped.get("PLAT_DU_JOUR", []) %}
+      <div class="recipe-score">
+        <div><strong>{{ r.name }}</strong><small>{{ r.reason }}</small></div>
+        <span class="score">{{ r.score|round|int }}%</span>
+      </div>
+    {% else %}
+      <div class="empty">Aucun plat du jour configuré.</div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>📋 Carte</h2>
+    <p class="muted">Plats de la carte les plus faisables avec le stock observé.</p>
+    {% for r in grouped.get("CARTE", []) %}
+      <div class="recipe-score">
+        <div><strong>{{ r.name }}</strong><small>{{ r.reason }}</small></div>
+        <span class="score">{{ r.score|round|int }}%</span>
+      </div>
+    {% else %}
+      <div class="empty">Aucun plat de carte configuré.</div>
+    {% endfor %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}
