@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div><span class="eyebrow">INVENTAIRE</span><h1>Stock cuisine</h1><p>Quantité enregistrée et niveau cible.</p></div>
+</section>
+
+<section class="card">
+  <h2>Ajouter un produit</h2>
+  <form class="form-grid" method="post" action="/inventory/product">
+    <input name="name" placeholder="Saumon" required>
+    <input name="category" placeholder="Poisson">
+    <input name="unit" placeholder="kg" required>
+    <input name="current_qty" type="number" step="0.01" value="0" placeholder="Stock">
+    <input name="par_level" type="number" step="0.01" value="0" placeholder="Cible">
+    <input name="unit_cost" type="number" step="0.01" value="0" placeholder="Coût/unité">
+    <button class="primary">Ajouter</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Produits</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Produit</th><th>Catégorie</th><th>Stock</th><th>Cible</th><th>Ajuster</th></tr></thead>
+      <tbody>
+      {% for p in products %}
+        <tr>
+          <td><strong>{{ p.name }}</strong></td>
+          <td>{{ p.category }}</td>
+          <td>{{ p.current_qty }} {{ p.unit }}</td>
+          <td>{{ p.par_level }} {{ p.unit }}</td>
+          <td>
+            <form class="inline" method="post" action="/inventory/{{ p.id }}/adjust">
+              <input name="absolute_qty" type="number" step="0.01" value="{{ p.current_qty }}">
+              <input name="note" placeholder="raison">
+              <button>OK</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">Ajoute d'abord les produits principaux.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Derniers mouvements</h2>
+  {% for e in events %}
+    <div class="rowline">
+      <div><strong>{{ e.product_name }}</strong><small>{{ e.event_type }} · {{ e.source }} · {{ e.created_at }}</small></div>
+      <div class="qty">{{ "%+.2f"|format(e.qty_delta) }} {{ e.unit }} → {{ e.absolute_after }}</div>
+    </div>
+  {% else %}
+    <div class="empty">Pas encore de mouvements.</div>
+  {% endfor %}
+</section>
+{% endblock %}
