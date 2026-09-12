@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div><span class="eyebrow">PHOTO ASSISTÉE</span><h1>Photographier au lieu de saisir</h1><p>Sur tablette ou téléphone, l'app ouvre directement la caméra arrière.</p></div>
+</section>
+
+<div class="grid two">
+  <section class="card scan-card">
+    <div class="bigicon">🧾</div>
+    <h2>Bon de commande / BL</h2>
+    <p>Extraction du fournisseur, référence, produits, quantités et prix. Le document est archivé automatiquement comme brouillon.</p>
+    <form method="post" action="/scan/order" enctype="multipart/form-data" data-loading>
+      <label class="camera-button">
+        📷 Prendre une photo
+        <input name="photo" type="file" accept="image/*" capture="environment" required>
+      </label>
+      <button class="primary wide">Analyser et enregistrer</button>
+    </form>
+  </section>
+
+  <section class="card scan-card">
+    <div class="bigicon">❄️</div>
+    <h2>Chambre froide</h2>
+    <p>Une photo ponctuelle estime les produits visibles, simule le réassort et classe les plats prédéfinis par le chef.</p>
+    <form method="post" action="/scan/cold-room" enctype="multipart/form-data" data-loading>
+      <label class="camera-button">
+        📷 Photographier la chambre froide
+        <input name="photo" type="file" accept="image/*" capture="environment" required>
+      </label>
+      <button class="primary wide">Analyser le stock visible</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Historique</h2>
+  {% for s in scans %}
+    <a class="rowline linkrow" href="/scan/{{ s.id }}">
+      <div><strong>{{ "Document fournisseur" if s.scan_type=="ORDER_DOC" else "Chambre froide" }}</strong><small>{{ s.created_at }}</small></div>
+      <span class="badge">{{ s.status }}</span>
+    </a>
+  {% else %}
+    <div class="empty">Aucune photo analysée.</div>
+  {% endfor %}
+</section>
+{% endblock %}
